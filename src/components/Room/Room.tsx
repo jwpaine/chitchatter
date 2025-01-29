@@ -55,6 +55,7 @@ export function Room({
     isMessageSending,
     handleInlineMediaUpload,
     handleMessageChange,
+    handleReaction,
     messageLog,
     peerRoom,
     roomContextValue,
@@ -166,6 +167,7 @@ export function Room({
                 <ChatTranscript
                   messageLog={messageLog}
                   userId={userId}
+                  onReact={handleReaction}
                   sx={{ ...(isDirectMessageRoom && { pt: 1 }) }}
                 />
                 <Divider />

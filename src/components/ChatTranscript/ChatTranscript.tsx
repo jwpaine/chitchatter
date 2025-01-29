@@ -9,12 +9,14 @@ import { ShellContext } from 'contexts/ShellContext'
 export interface ChatTranscriptProps extends BoxProps {
   messageLog: Array<IMessage | InlineMedia>
   userId: string
+  onReact: (messageId: string, reaction: string) => Promise<void>
 }
 
 export const ChatTranscript = ({
   messageLog,
   userId,
   sx,
+  onReact,
 }: ChatTranscriptProps) => {
   const { showRoomControls } = useContext(ShellContext)
   const theme = useTheme()
@@ -94,6 +96,8 @@ export const ChatTranscript = ({
               message={message}
               userId={userId}
               showAuthor={isFirstMessageInGroup}
+              reactions={message.reactions || {}}
+              onReact={onReact}
             />
           </div>
         )

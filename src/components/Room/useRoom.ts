@@ -354,15 +354,34 @@ export function useRoom(
 
         if (userSettings.showNotificationOnNewMessage) {
           const displayUsername = getDisplayUsername(message.authorId)
-
           notification.showNotification(`${displayUsername}: ${message.text}`)
         }
       }
 
-      setMessageLog([
-        ...messageLog,
-        { ...message, timeReceived: timeService.now() },
-      ])
+      //Get the current message log first
+      const currentMessages = [...messageLog]
+
+      if (message.reactionTo) {
+        // If it's a reaction, modify the correct message
+        for (let i = 0; i < currentMessages.length; i++) {
+          if (currentMessages[i].id === message.reactionTo) {
+            currentMessages[i] = {
+              ...currentMessages[i],
+              reactions: message.reactions || {}, // Ensure reactions exist
+              timeReceived:
+                currentMessages[i].timeReceived ?? timeService.now(),
+            }
+            break // Stop once we find and update the message
+          }
+        }
+      } else {
+        // Normal message, add to the log
+        currentMessages.push({ ...message, timeReceived: timeService.now() })
+      }
+
+      // Update message log with the new state
+      setMessageLog(currentMessages)
+
       updatePeer(peerId, { isTypingGroupMessage: false })
     },
   })
@@ -422,6 +441,52 @@ export function useRoom(
       ...messageLog,
       { ...unsentMessage, timeReceived: timeService.now() },
     ])
+    setIsMessageSending(false)
+  }
+
+  const handleReaction = async (messageId: string, reaction: string) => {
+    if (isMessageSending) return
+
+    setIsMessageSending(true)
+
+    // Find the target message
+    const targetMessageIndex = messageLog.findIndex(msg => msg.id === messageId)
+    if (targetMessageIndex === -1) {
+      setIsMessageSending(false)
+      return
+    }
+
+    const updatedMessageLog = [...messageLog]
+    const targetMessage = { ...updatedMessageLog[targetMessageIndex] }
+
+    // Ensure reactions exist
+    if (!targetMessage.reactions) {
+      targetMessage.reactions = {}
+    }
+
+    if (!targetMessage.reactions[reaction]) {
+      targetMessage.reactions[reaction] = {}
+    }
+
+    // Toggle reaction for this user
+    if (targetMessage.reactions[reaction][userId]) {
+      delete targetMessage.reactions[reaction][userId]
+    } else {
+      targetMessage.reactions[reaction][userId] = 1
+    }
+    updatedMessageLog[targetMessageIndex] = targetMessage
+    setMessageLog(updatedMessageLog)
+
+    const reactionMessage: UnsentMessage = {
+      id: getUuid(),
+      text: '',
+      timeSent: timeService.now(),
+      authorId: userId,
+      reactionTo: messageId,
+      reactions: targetMessage.reactions,
+    }
+    await sendPeerMessage(reactionMessage, targetPeerId)
+
     setIsMessageSending(false)
   }
 
@@ -564,6 +629,7 @@ export function useRoom(
     peerRoom,
     roomContextValue,
     sendMessage,
+    handleReaction,
     showVideoDisplay,
   }
 }

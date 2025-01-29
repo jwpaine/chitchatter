@@ -19,6 +19,7 @@ import {
 } from 'models/chat'
 import { PeerNameDisplay } from 'components/PeerNameDisplay'
 import { CopyableBlock } from 'components/CopyableBlock/CopyableBlock'
+import { Reaction } from 'components/Reaction'
 
 import { InlineMedia } from './InlineMedia'
 
@@ -28,6 +29,8 @@ export interface MessageProps {
   message: IMessage | I_InlineMedia
   showAuthor: boolean
   userId: string
+  reactions: Record<string, Record<string, number>>
+  onReact: (messageId: string, reaction: string) => void
 }
 
 const typographyFactory =
@@ -91,7 +94,13 @@ const isYouTubeLink = (message: IMessage) => {
   return typeof getYouTubeVideoId(message.text) === 'string'
 }
 
-export const Message = ({ message, showAuthor, userId }: MessageProps) => {
+export const Message = ({
+  message,
+  showAuthor,
+  userId,
+  reactions,
+  onReact,
+}: MessageProps) => {
   let backgroundColor: string
 
   if (message.authorId === userId) {
@@ -167,6 +176,31 @@ export const Message = ({ message, showAuthor, userId }: MessageProps) => {
           )}
         </Box>
       </Tooltip>
+      {reactions && Object.keys(reactions).length > 0 && (
+        <Box sx={{ display: 'flex', gap: '4px', mt: 1 }}>
+          {Object.entries(reactions).map(([emoji, users]) => (
+            <Box
+              sx={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                padding: '4px 8px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+              }}
+              onClick={() => onReact(message.id, emoji)}
+            >
+              {emoji} {Object.values(users).reduce((a, b) => a + b, 0)}
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      <Box sx={{ mt: 1 }}>
+        <Reaction messageId={message.id} onReact={onReact} />
+      </Box>
     </Box>
   )
 }
